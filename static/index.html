@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECRET_SHARE // TERMINAL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00ff9d;
+            /* Neon Green */
+            --primary-dim: rgba(0, 255, 157, 0.1);
+            --bg-color: #050505;
+            --panel-bg: rgba(10, 15, 10, 0.9);
+            --text-color: #00ff9d;
+            --muted-color: #008f58;
+            --error-color: #ff0055;
+            --border-color: #00ff9d;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image:
+                linear-gradient(var(--primary-dim) 1px, transparent 1px),
+                linear-gradient(90deg, var(--primary-dim) 1px, transparent 1px);
+            background-size: 40px 40px;
+            overflow: hidden;
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .container {
+            background: var(--panel-bg);
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 550px;
+            box-shadow: 0 0 20px var(--primary-dim), inset 0 0 20px var(--primary-dim);
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Decorative Corners */
+        .container::before {
+            content: "";
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            width: 20px;
+            height: 20px;
+            border-top: 2px solid var(--primary);
+            border-left: 2px solid var(--primary);
+        }
+
+        .container::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            width: 20px;
+            height: 20px;
+            border-bottom: 2px solid var(--primary);
+            border-right: 2px solid var(--primary);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--primary);
+            border-bottom: 1px dashed var(--muted-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        p {
+            color: var(--primary);
+            opacity: 0.8;
+            font-size: 1rem;
+        }
+
+        textarea,
+        input[type="text"] {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--muted-color);
+            color: var(--primary);
+            border-radius: 0;
+            padding: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 120px;
+            box-sizing: border-box;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        textarea:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-dim);
+        }
+
+        input[type="text"] {
+            min-height: unset;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .file-upload-area {
+            border: 1px dashed var(--muted-color);
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .file-upload-area:hover,
+        .file-upload-area.dragover {
+            border-color: var(--primary);
+            background: var(--primary-dim);
+        }
+
+        #fileInput {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        button {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 12px 30px;
+            font-family: inherit;
+            font-size: 1.1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: var(--primary);
+            color: black;
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .primary {
+            font-weight: bold;
+        }
+
+        #result,
+        #error,
+        #readError {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border: 1px solid var(--primary);
+            background: rgba(0, 20, 10, 0.8);
+            display: none;
+            word-break: break-all;
+        }
+
+        #error,
+        #readError {
+            border-color: var(--error-color);
+            color: var(--error-color);
+            background: rgba(20, 0, 5, 0.8);
+            text-shadow: 0 0 5px var(--error-color);
+        }
+
+        .loading {
+            color: var(--primary);
+            display: none;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .copy-box {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-direction: column;
+        }
+
+        .status-line {
+            font-size: 0.8rem;
+            color: var(--muted-color);
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        /* Glitch effect for title on hover */
+        h1:hover {
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: var(--error-color);
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0)
+            }
+
+            20% {
+                transform: translate(-2px, 2px)
+            }
+
+            40% {
+                transform: translate(-2px, -2px)
+            }
+
+            60% {
+                transform: translate(2px, 2px)
+            }
+
+            80% {
+                transform: translate(2px, -2px)
+            }
+
+            100% {
+                transform: translate(0)
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container" id="create-view">
+        <div style="position: absolute; top: 10px; right: 10px; opacity: 0.3; cursor: pointer; font-size: 0.6rem; color: var(--muted-color);"
+            onclick="toggleAdmin()">[ ADMIN ]</div>
+        <h1>&lt;SECRET_SHARE /&gt;</h1>
+        [SYSTEM READY]<br>
+        ENTER PAYLOAD OR UPLOAD BINARY DATA.
+        </p>
+
+        <div id="adminPanel"
+            style="display: none; border: 1px solid var(--primary); padding: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.8);">
+            <div style="margin-bottom: 5px; font-weight: bold; border-bottom: 1px solid var(--primary);">[ SYSTEM STATUS
+                :: ADMIN ONLY ]</div>
+            <div style="font-size: 0.8rem; color: var(--primary); text-align: left;">
+                > MEMORY: <span id="memUsed">...</span> / <span id="memLimit">...</span> (<span
+                    id="memPercent">0</span>%)<br>
+                > SECRETS CREATED: <span id="secretsCreated">0</span><br>
+                > SECRETS RETRIEVED: <span id="secretsRetrieved">0</span>
+            </div>
+            <button onclick="toggleAdmin()" style="margin-top: 10px; font-size: 0.7rem; padding: 5px;">[ CLOSE PANEL
+                ]</button>
+        </div>
+
+        <div id="inputModeTabs" style="margin-bottom: 10px;">
+            <button onclick="setInputMode('text')" id="tabText"
+                style="font-size: 0.8rem; padding: 5px 10px; background: var(--primary); color: black;">[ TEXT
+                ]</button>
+            <button onclick="setInputMode('file')" id="tabFile" style="font-size: 0.8rem; padding: 5px 10px;">[ FILE
+                ]</button>
+        </div>
+
+        <div id="textInputArea">
+            <textarea id="secretInput" placeholder="// ENTER SECRET DATA..." autofocus></textarea>
+        </div>
+
+        <div id="fileInputArea" style="display: none;">
+            <div class="file-upload-area" id="dropZone">
+                <span id="fileNameDisplay">[ DRAG FILE HERE OR CLICK ]</span>
+                <input type="file" id="fileInput" onchange="updateFileName()">
+            </div>
+        </div>
+
+        <button class="primary" onclick="createSecret()">[ INITIATE ENCRYPTION ]</button>
+
+        <div id="error"></div>
+
+        <div id="result">
+            <div style="font-weight: bold; margin-bottom: 0.5rem; text-transform: uppercase;">>> SECURE LINK GENERATED
+            </div>
+            <div class="copy-box">
+                <input type="text" id="shareLink" readonly>
+                <button id="copyBtn" onclick="copyLink()">[ COPY UPLINK ]</button>
+            </div>
+            <p class="status-line">
+                WARNING: LINK SELF-DESTRUCTS AFTER SINGLE ACCESS.
+            </p>
+        </div>
+    </div>
+
+    <div class="container" id="read-view" style="display: none;">
+        <h1>&lt;DECRYPT_MODE /&gt;</h1>
+        <div class="loading" id="loadingMsg" style="display: block;">>> DECRYPTING SECURE PACKET...</div>
+
+        <!-- Text Display -->
+        <div id="secretDisplay"
+            style="margin-top: 1.5rem; white-space: pre-wrap; display: none; text-align: left; border-left: 3px solid var(--primary); padding-left: 15px; overflow-x: auto;">
+        </div>
+
+        <!-- File Download Display -->
+        <div id="fileDisplay" style="margin-top: 1.5rem; display: none;">
+            <div style="margin-bottom: 1rem;">>> BINARY PAYLOAD DETECTED</div>
+            <div id="fileInfo" style="color: var(--muted-color); margin-bottom: 1rem;"></div>
+            <button id="downloadBtn" class="primary">[ DOWNLOAD DATA ]</button>
+        </div>
+
+        <div id="readError"></div>
+
+        <button onclick="window.location.href='/'" style="margin-top: 2rem;">[ NEW TRANSMISSION ]</button>
+    </div>
+
+    <script>
+        let currentMode = 'text';
+
+        function setInputMode(mode) {
+            currentMode = mode;
+            document.getElementById('textInputArea').style.display = mode === 'text' ? 'block' : 'none';
+            document.getElementById('fileInputArea').style.display = mode === 'file' ? 'block' : 'none';
+
+            // Tab styling
+            if (mode === 'text') {
+                document.getElementById('tabText').style.backgroundColor = 'var(--primary)';
+                document.getElementById('tabText').style.color = 'black';
+                document.getElementById('tabFile').style.backgroundColor = 'transparent';
+                document.getElementById('tabFile').style.color = 'var(--primary)';
+            } else {
+                document.getElementById('tabFile').style.backgroundColor = 'var(--primary)';
+                document.getElementById('tabFile').style.color = 'black';
+                document.getElementById('tabText').style.backgroundColor = 'transparent';
+                document.getElementById('tabText').style.color = 'var(--primary)';
+            }
+        }
+
+        function updateFileName() {
+            const fileInput = document.getElementById('fileInput');
+            const display = document.getElementById('fileNameDisplay');
+            if (fileInput.files.length > 0) {
+                display.innerText = ">> " + fileInput.files[0].name.toUpperCase();
+                display.style.color = 'var(--primary)';
+            } else {
+                display.innerText = "[ DRAG FILE HERE OR CLICK ]";
+                display.style.color = 'inherit';
+            }
+        }
+
+        // Check if we are in "Read Mode" (URL hash present)
+        window.onload = function () {
+            if (window.location.hash.length > 1) {
+                document.getElementById('create-view').style.display = 'none';
+                document.getElementById('read-view').style.display = 'block';
+                revealSecret();
+            } else {
+                fetchStats();
+                setInterval(fetchStats, 5000); // Update every 5s
+            }
+        };
+
+        async function fetchStats() {
+            try {
+                const res = await fetch('/stats');
+                const data = await res.json();
+
+                // Format bytes
+                const formatBytes = (bytes) => {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
+
+                document.getElementById('memUsed').innerText = formatBytes(data.memory_used);
+                document.getElementById('memLimit').innerText = formatBytes(data.memory_limit);
+                document.getElementById('memPercent').innerText = data.percent_used;
+                document.getElementById('secretsCreated').innerText = data.secrets_created || 0;
+                document.getElementById('secretsRetrieved').innerText = data.secrets_retrieved || 0;
+            } catch (e) {
+                console.error("Stats error", e);
+            }
+        }
+
+        function toggleAdmin() {
+            const p = document.getElementById('adminPanel');
+            if (p.style.display === 'none') {
+                const pass = prompt("ENTER ADMIN KEY:");
+                if (pass === 'admin') {
+                    p.style.display = 'block';
+                    fetchStats();
+                } else if (pass !== null) {
+                    alert("ACCESS DENIED");
+                }
+            } else {
+                p.style.display = 'none';
+            }
+        }
+
+        async function createSecret() {
+            const errorDiv = document.getElementById('error');
+            const resultDiv = document.getElementById('result');
+
+            errorDiv.style.display = 'none';
+            resultDiv.style.display = 'none';
+
+            let body;
+            let headers = {};
+
+            if (currentMode === 'text') {
+                const data = document.getElementById('secretInput').value;
+                if (!data) return;
+                headers['Content-Type'] = 'application/json';
+                body = JSON.stringify({ data: data });
+            } else {
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput.files.length === 0) return;
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                body = formData;
+                // Content-Type header excluded so browser sets boundary
+            }
+
+            try {
+                const response = await fetch('/secret', {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    // Try to parse JSON error if possible
+                    try {
+                        const jsonErr = JSON.parse(text);
+                        throw new Error(jsonErr.message || text); // OpenApi style often wraps error in message? or just raw text? 
+                    } catch (e) {
+                        // Raw text
+                        throw new Error(text || 'ENCRYPTION_FAILED');
+                    }
+                }
+
+                const json = await response.json();
+
+                const link = `${window.location.protocol}//${window.location.host}/#${json.id}.${json.key}`;
+
+                document.getElementById('shareLink').value = link;
+                resultDiv.style.display = 'block';
+            } catch (err) {
+                errorDiv.innerText = "ERROR: " + err.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        async function copyLink() {
+            const copyText = document.getElementById("shareLink");
+            const btn = document.getElementById("copyBtn");
+            const originalText = "[ COPY UPLINK ]";
+
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(copyText.value);
+                    showSuccess();
+                } else {
+                    // Fallback
+                    document.execCommand('copy');
+                    showSuccess();
+                }
+            } catch (err) {
+                showError();
+            }
+
+            function showSuccess() {
+                btn.innerText = "[ COPIED! ]";
+                setTimeout(() => btn.innerText = originalText, 2000);
+            }
+
+            function showError() {
+                btn.innerText = "[ ERROR ]";
+                setTimeout(() => btn.innerText = originalText, 2000);
+            }
+        }
+
+        async function revealSecret() {
+            const readError = document.getElementById('readError');
+            const loadingMsg = document.getElementById('loadingMsg');
+            const display = document.getElementById('secretDisplay');
+            const fileDisplay = document.getElementById('fileDisplay');
+
+            readError.style.display = 'none';
+
+            await new Promise(r => setTimeout(r, 800));
+
+            try {
+                const hash = window.location.hash.substring(1);
+                // We use '.' as separator. Base64URL may contain '_' or '-' but not '.'.
+                // So splitting by '.' is safe.
+                const parts = hash.split('.');
+
+                if (parts.length !== 2) throw new Error('INVALID_LINK_FORMAT');
+
+                const id = parts[0];
+                const key = parts[1];
+
+                const response = await fetch('/retrieve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, key: key })
+                });
+
+                if (response.status === 410) {
+                    const text = await response.text();
+                    if (text.includes("recycled")) throw new Error('SECRET_RECYCLED_SYSTEM_BUSY');
+                    throw new Error('SECRET_ALREADY_ACCESSED');
+                }
+                if (response.status === 404) throw new Error('TARGET_MISSING_OR_DESTROYED');
+                if (response.status === 401) throw new Error('ACCESS_DENIED_INVALID_KEY');
+                if (!response.ok) throw new Error('SYSTEM_FAILURE');
+
+                const json = await response.json();
+
+                loadingMsg.style.display = 'none';
+
+                if (json.is_file) {
+                    fileDisplay.style.display = 'block';
+                    document.getElementById('fileInfo').innerText = `FILE: ${json.filename || 'unknown'} (${json.mime_type})`;
+
+                    const btn = document.getElementById('downloadBtn');
+                    btn.onclick = () => {
+                        // Convert base64 to byte array
+                        const byteCharacters = atob(json.file_data);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: json.mime_type });
+
+                        // Download trigger
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = json.filename || 'secret-download';
+                        link.click();
+                    };
+                } else {
+                    display.innerText = json.text || json.data; // Handle both new and old format
+                    display.style.display = 'block';
+                }
+
+            } catch (err) {
+                loadingMsg.style.display = 'none';
+                readError.innerText = "CRITICAL FAILURE: " + err.message;
+                readError.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+
+</html>

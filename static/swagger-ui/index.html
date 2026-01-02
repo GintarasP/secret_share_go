@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SECRET_SHARE // TERMINAL API</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" />
+    <style>
+        :root {
+            --primary: #00ff9d;
+            --primary-dim: rgba(0, 255, 157, 0.1);
+            --bg-color: #050505;
+            --panel-bg: rgba(10, 15, 10, 0.9);
+            --text-color: #00ff9d;
+            --muted-color: #008f58;
+            --error-color: #ff0055;
+            --border-color: #00ff9d;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            background-image:
+                linear-gradient(var(--primary-dim) 1px, transparent 1px),
+                linear-gradient(90deg, var(--primary-dim) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 10000;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .swagger-ui {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-color);
+        }
+
+        .swagger-ui .topbar {
+            background-color: var(--bg-color);
+            border-bottom: 1px dashed var(--primary);
+        }
+
+        .swagger-ui .topbar a {
+            max-width: unset;
+            color: var(--primary);
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .swagger-ui .topbar a span {
+            display: none;
+        }
+
+        .swagger-ui .topbar a:after {
+            content: "<SECRET_SHARE/>";
+        }
+
+        .swagger-ui .info,
+        .swagger-ui .info .description,
+        .swagger-ui .info .title,
+        .swagger-ui .info a {
+            color: var(--text-color) !important;
+        }
+
+        .swagger-ui .info .title {
+            color: var(--primary);
+            font-family: 'Share Tech Mono', monospace;
+            text-shadow: 0 0 10px var(--primary-dim);
+        }
+
+        .swagger-ui .info,
+        .swagger-ui .info .description {
+            color: var(--text-color);
+        }
+
+        .swagger-ui .scheme-container {
+            background: var(--bg-color);
+            box-shadow: none;
+            border-bottom: 1px solid var(--muted-color);
+        }
+
+        /* General Text Overrides */
+        .swagger-ui,
+        .swagger-ui p,
+        .swagger-ui li,
+        .swagger-ui table,
+        .swagger-ui td,
+        .swagger-ui th,
+        .swagger-ui label,
+        .swagger-ui .tab li,
+        .swagger-ui h1,
+        .swagger-ui h2,
+        .swagger-ui h3,
+        .swagger-ui h4,
+        .swagger-ui h5,
+        .swagger-ui h6 {
+            color: var(--text-color) !important;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .swagger-ui a {
+            color: var(--primary) !important;
+        }
+
+        /* Operations */
+        .swagger-ui .opblock .opblock-summary-method {
+            background: var(--bg-color);
+            border: 1px solid var(--text-color);
+            border-radius: 0;
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-color) !important;
+        }
+
+        .swagger-ui .opblock {
+            background: var(--panel-bg);
+            border: 1px solid var(--muted-color);
+            border-radius: 0;
+            box-shadow: 0 0 10px var(--primary-dim);
+        }
+
+        .swagger-ui .opblock .opblock-summary {
+            border-bottom: 1px solid var(--muted-color);
+        }
+
+        .swagger-ui .opblock .opblock-summary-description {
+            color: var(--text-color);
+        }
+
+        .swagger-ui .opblock .opblock-summary-path {
+            color: var(--primary);
+            font-family: monospace;
+        }
+
+        /* Post Green */
+        .swagger-ui .opblock.opblock-post {
+            border-color: var(--primary);
+            background: rgba(0, 255, 157, 0.05);
+        }
+
+        .swagger-ui .opblock.opblock-post .opblock-summary-method {
+            background: var(--primary);
+            color: black;
+            font-weight: bold;
+        }
+
+        /* Parameters & Models */
+        .swagger-ui .btn {
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            background: transparent;
+            border-radius: 0;
+            font-family: 'Share Tech Mono', monospace;
+            box-shadow: none;
+        }
+
+        .swagger-ui .btn:hover {
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .swagger-ui .btn.execute {
+            background-color: var(--primary);
+            color: black;
+            font-weight: bold;
+        }
+
+        .swagger-ui input[type=text],
+        .swagger-ui input[type=password],
+        .swagger-ui input[type=search],
+        .swagger-ui textarea {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--muted-color);
+            color: var(--primary);
+            border-radius: 0;
+        }
+
+        .swagger-ui select {
+            background: var(--bg-color);
+            color: var(--primary);
+            border: 1px solid var(--muted-color);
+        }
+
+        .swagger-ui .model-box {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .swagger-ui section.models {
+            border-top: 1px dashed var(--muted-color);
+        }
+
+        .swagger-ui section.models h4 {
+            color: var(--primary);
+        }
+
+        .swagger-ui .model {
+            color: var(--text-color);
+        }
+
+        .swagger-ui .model-title {
+            color: var(--primary);
+        }
+
+        /* Hide standard logo */
+        .swagger-ui .topbar-wrapper img {
+            display: none;
+        }
+
+        /* Markdown / Pre */
+        .swagger-ui .markdown pre {
+            background: #000 !important;
+            border: 1px solid var(--muted-color);
+            color: var(--primary);
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
+    <script>
+        window.onload = () => {
+            window.ui = SwaggerUIBundle({
+                url: '/openapi.yaml',
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "BaseLayout"
+            });
+        };
+    </script>
+</body>
+
+</html>

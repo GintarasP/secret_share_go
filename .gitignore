@@ -1,0 +1,15 @@
+# Binaries
+server
+*.exe
+*.dll
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Go
+vendor/
+go.sum

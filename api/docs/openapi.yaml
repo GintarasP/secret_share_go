@@ -1,0 +1,190 @@
+openapi: 3.0.3
+info:
+  title: Secret Share API
+  description: |
+    A One-Time Secret Sharing service with End-to-End Encryption (E2EE) principles.
+    Secrets (text or files) are encrypted on the server with a generated key.
+    This key is returned to the user but **NOT stored on the server**.
+    The secret is 'burned' (deleted) from memory immediately after a single retrieval.
+
+    # System Architecture
+
+    ```
+    +-------------------------------------------------------------------------+
+    |                             CLIENT (Browser)                            |
+    |                                                                         |
+    |  [ Secret Input ]                                  [ View Secret ]      |
+    |         |                                                 ^             |
+    |         v                                                 |             |
+    |  1. POST /secret                                  4. POST /retrieve     |
+    |     (Raw Data)                                   (ID + Key from Hash)   |
+    +--------+--------------------------------------------------+-------------+
+             |                                                  |
+             | HTTPS                                            | HTTPS
+             |                                                  |
+    +--------v--------------------------------------------------v-------------+
+    |                             SERVER (Go)                                 |
+    |                                                                         |
+    |  +-------------------+                      +------------------------+  |
+    |  |  CREATE HANDLER   |                      |    RETRIEVE HANDLER    |  |
+    |  +-------------------+                      +------------------------+  |
+    |           |                                             |               |
+    |  A. Gen Random Key (32B)                                |               |
+    |  B. Gen ID                                              |               |
+    |           |                                             |               |
+    |           v                                             v               |
+    |  +-------------------+                      +------------------------+  |
+    |  |  CRYPTO (AES-GCM) |<---(Uses Key)---|    |   CRYPTO (AES-GCM)     |  |
+    |  +-------------------+                      +------------------------+  |
+    |           |  Encrypt                                    ^  Decrypt      |
+    |           v                                             |               |
+    |  +-------------------+                      +------------------------+  |
+    |  |   IN-MEMORY STORE |                      |    IN-MEMORY STORE     |  |
+    |  |  (Map + FIFO List)|                      |   (Map + FIFO List)    |  |
+    |  +-------------------+                      +------------------------+  |
+    |           | Store (ID, EncryptedBlob)                   |               |
+    |           |                                    C. Fetch & DELETE (Burn) |
+    |           |                                             |               |
+    +-----------+---------------------------------------------+---------------+
+                |                                             |
+                v                                             |
+         Returns (ID, Key)                             Returns Data
+    ```
+
+    # Security Flow
+    1. **Zero Knowledge Storage**: The encryption key is generated per request. It is sent back to the client and immediately discarded from the server's memory. The server only holds the encrypted blob.
+    2. **Burn-on-Read**: The `Retrieve` operation uses `LoadAndDelete`, ensuring that once the data is fetched, it is permanently removed.
+    3. **URL Security**: The Key is intended to be shared via URL Fragment (`#`), which is not sent to the server in standard HTTP requests, preventing it from appearing in access logs (though since this API receives the key in the POST body to decrypt, we rely on HTTPS for transport security).
+    4. **Memory Management**: The server enforces a memory limit (default 2GB). It employs a **FIFO (First-In-First-Out)** eviction strategy to free space for new secrets when the limit is reached. Additionally, secrets automatically expire (TTL) after **15 minutes** if not accessed.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local Development Server
+
+paths:
+  /stats:
+    get:
+      summary: Get server memory stats
+      description: Returns the current memory usage and the configured limit.
+      responses:
+        '200':
+          description: Stats retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memory_used:
+                    type: integer
+                    description: Current memory used in bytes.
+                  memory_limit:
+                    type: integer
+                    description: Memory limit in bytes.
+                  percent_used:
+                    type: number
+                    format: float
+                    description: Percentage of memory used.
+  /secret:
+    post:
+      summary: Create a new secret
+      description: |
+        Encrypts and stores a secret (text or file). Returns an ID and a Key.
+        The Key is NOT stored on the server. You must preserve it to retrieve the secret.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: string
+                  description: The plain text secret to encrypt.
+                  example: "My super secret password"
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: A file to encrypt (max 100MB).
+      responses:
+        '200':
+          description: Secret created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: The unique identifier for the encrypted secret.
+                    example: "a8f9..."
+                  key:
+                    type: string
+                    description: The decryption key (Base64URL encoded). KEEP THIS SAFE.
+                    example: "x9z1..."
+        '400':
+          description: Invalid input (empty data or file too large)
+        '500':
+          description: Internal server error (encryption failed)
+
+  /retrieve:
+    post:
+      summary: Retrieve and burn a secret
+      description: |
+        Retrieves an encrypted secret using its ID and Key.
+        Once retrieved, the secret is PERMANENTLY DELETED from the server (Burn-on-Read).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - key
+              properties:
+                id:
+                  type: string
+                  description: The secret ID returned during creation.
+                key:
+                  type: string
+                  description: The decryption key returned during creation.
+      responses:
+        '200':
+          description: Secret retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+                    description: The decrypted text (if payload was text).
+                  file_data:
+                    type: string
+                    description: Base64 encoded file content (if payload was file).
+                  filename:
+                    type: string
+                    description: Original filename.
+                  mime_type:
+                    type: string
+                    description: MIME type of the file.
+                  is_file:
+                    type: boolean
+                    description: True if the secret is a file.
+        '404':
+          description: Secret not found (never existed).
+        '401':
+          description: Invalid Key (decryption failed).
+        '410':
+          description: Secret already accessed (Burned-on-Read).
+
+components:
+  schemas:
+    Error:
+      type: string
+      description: Error message
