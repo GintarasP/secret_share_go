@@ -23,7 +23,6 @@ type item struct {
 
 // MemoryStore implements Store using a standard Map + List for FIFO eviction.
 type MemoryStore struct {
-	// Mutex protects map, list, and memory counters
 	mu       sync.Mutex
 	data     map[string]*list.Element
 	order    *list.List // Front is Oldest, Back is Newest
@@ -43,7 +42,6 @@ func NewMemoryStore(maxMemory int64) *MemoryStore {
 		order:     list.New(),
 		maxMemory: maxMemory,
 	}
-	// Start cleanup routine for TTL
 	go ms.cleanupLoop()
 	return ms
 }
@@ -60,16 +58,12 @@ func (s *MemoryStore) Save(id string, data []byte) error {
 
 	// 1. Evict until we have space
 	for s.curMemory+int64(size) > s.maxMemory {
-		// Remove oldest (Front of list)
+		// Remove oldest
 		elem := s.order.Front()
 		if elem == nil {
-			// Should be unreachable if size <= maxMemory, but safety check
-			// Wait, if map is empty but size is taking all space?
-			// Handled by initial check.
-			// Logic: map empty, curMemory=0. 0+size <= max. Loop doesn't run.
 			break
 		}
-		s.removeElement(elem, true) // True = Recycled
+		s.removeElement(elem, true)
 	}
 
 	// 2. Add new item
@@ -94,7 +88,6 @@ func (s *MemoryStore) Save(id string, data []byte) error {
 
 // Get retrieves the data and deletes it (Burn-on-Read).
 func (s *MemoryStore) Get(id string) ([]byte, error) {
-	// First check burned tombstones (concurrent map safe)
 	if _, burned := s.burned.Load(id); burned {
 		return nil, ErrBurned
 	}
@@ -158,7 +151,7 @@ func (s *MemoryStore) prune() {
 
 	now := time.Now()
 
-	// Check from Front (Oldest)
+	// Check from Front
 	for {
 		elem := s.order.Front()
 		if elem == nil {
@@ -167,9 +160,8 @@ func (s *MemoryStore) prune() {
 
 		it := elem.Value.(item)
 		if now.Sub(it.createdAt) > 15*time.Minute {
-			s.removeElement(elem, true) // Expired counts as recycled/gone
+			s.removeElement(elem, true)
 		} else {
-			// List is sorted by time, so if this one isn't expired, next ones aren't either.
 			break
 		}
 	}

@@ -1,6 +1,5 @@
 package store
 
-// Store defines the interface for storing and retrieving secrets.
 type Store interface {
 	// Save stores the value and returns a unique ID.
 	Save(id string, data []byte) error

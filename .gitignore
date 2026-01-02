@@ -13,3 +13,4 @@ server
 # Go
 vendor/
 go.sum
+.cache/

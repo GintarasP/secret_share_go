@@ -44,8 +44,6 @@ func (s *Server) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	// Check Content-Type to decide how to parse
 	contentType := r.Header.Get("Content-Type")
 	if strings.HasPrefix(contentType, "multipart/form-data") {
-		// Limit total request size (e.g. 100MB file + overhead)
-		// We'll set a hard limit of 110MB for safety.
 		r.Body = http.MaxBytesReader(w, r.Body, 110*1024*1024)
 		if err := r.ParseMultipartForm(110 * 1024 * 1024); err != nil {
 			http.Error(w, "File too large or invalid multipart", http.StatusBadRequest)
@@ -66,7 +64,6 @@ func (s *Server) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 			payload.Filename = header.Filename
 			payload.MimeType = header.Header.Get("Content-Type")
 		} else {
-			// No file, maybe just text field?
 			text := r.FormValue("data")
 			if text == "" {
 				http.Error(w, "No secret data provided", http.StatusBadRequest)
@@ -99,7 +96,7 @@ func (s *Server) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Generate ID (12 bytes -> 16 chars Base64URL)
+	// 1. Generate ID
 	idBytes := make([]byte, 12)
 	if _, err := rand.Read(idBytes); err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -107,7 +104,7 @@ func (s *Server) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	}
 	id := base64.RawURLEncoding.EncodeToString(idBytes)
 
-	// 2. Generate Key (12 bytes -> 16 chars Base64URL)
+	// 2. Generate Key
 	keyBytes := make([]byte, 12)
 	if _, err := rand.Read(keyBytes); err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -116,7 +113,6 @@ func (s *Server) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 	keyStr := base64.RawURLEncoding.EncodeToString(keyBytes)
 
 	// 3. Expand Key to 32 bytes using SHA256 for AES-256
-	// This allows us to use a shorter key in the URL
 	encryptionKey := sha256.Sum256([]byte(keyStr))
 
 	// 4. Encrypt using expanded key
@@ -128,7 +124,6 @@ func (s *Server) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 
 	// 5. Save to Store
 	if err := s.store.Save(id, encrypted); err != nil {
-		// Log the actual error for debugging
 		http.Error(w, "Failed to store secret: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -193,13 +188,8 @@ func (s *Server) HandleRetrieveSecret(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Unmarshal Payload
-	// For backward compatibility (if any old secrets exist), check logic?
-	// But in-memory store is wiped on restart, so no worries.
 	var payload models.SecretPayload
 	if err := json.Unmarshal(decrypted, &payload); err != nil {
-		// Fallback: It might be old format (raw string)?
-		// Actually, we just started, so let's assume it works.
-		// If it fails, maybe it IS just text?
 		payload.Text = string(decrypted)
 	}
 
